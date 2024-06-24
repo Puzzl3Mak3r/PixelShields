@@ -2,24 +2,54 @@
 --    Important Stuff to Declare First
 ---------------------------------------------
 local cx, cy = display.contentCenterX, display.contentCenterY
-physics = require "physics"
+local physics = require "physics"
 physics.start()
 physics.setGravity( 0, 0 )
+system.activate("multitouch")
+
 local playing = true
 local score = 0
 local fasterM = 1
 local spawnD1, spawnD2 = 13, 15
-local restart = false
-local scoreText = display.newText( "Score: " .. score, 70, 30, native.systemFont, 30 )
-local scoreTextDeath = display.newText( "", cx, cy+40, native.systemFont, 50 )
-local restartBtn = display.newText( "", cx, cy-40, native.systemFont, 50 )
--- physics.setDrawMode( "hybrid" )
+local enemiesList = {}
+
+
+
+
+---------------------------------------------
+--    Touch Controls
+---------------------------------------------
+
+-- Create 4 touch controls
+local rectUp = display.newRect( cx, cy, 707, 707 )
+local rectDown = display.newRect( cx, cy, 707, 707 )
+local rectLeft = display.newRect( cx, cy, 707, 707 )
+local rectRight = display.newRect( cx, cy, 707, 707 )
+rectUp.rotation = 45
+rectDown.rotation = 135
+rectLeft.rotation = 225
+rectRight.rotation = 315
+rectUp.fill = {0, 0, 0}
+rectDown.fill = {0, 0, 0}
+rectLeft.fill = {0, 0, 0}
+rectRight.fill = {0, 0, 0}
+rectDown.x, rectDown.y = cx, cy+500
+rectUp.x, rectUp.y = cx, cy-500
+rectLeft.x, rectLeft.y = cx-500, cy
+rectRight.x, rectRight.y = cx+500, cy 
+-- rectUp.alpha, rectDown.alpha, rectLeft.alpha, rectRight.alpha = 0.001, 0.001, 0.001, 0.001
+
+
 
 
 
 ---------------------------------------------
 --    Visual Elements
 ---------------------------------------------
+
+-- Create Texts
+local scoreText = display.newText( "Score: " .. score, 70, 30, native.systemFont, 30 )
+local scoreTextDeath = display.newText( "", cx, cy+40, native.systemFont, 50 )
 
 -- Create Player & Player Hitbox
 local playerFrameSize =
@@ -83,14 +113,12 @@ physics.addBody( shield, "static" )
 
 
 -- Enemy information
-local orientation = {"up", "down", "left", "right"}
 local enemySpeed = 3.5
 local Xpos      = {cx, cx, 0, (cx*2)}
 local Ypos      = {0, (cy*2), cy, cy}
 local xSpeed    = {0, 0, 100*enemySpeed, -100*enemySpeed}
 local ySpeed    = {100*enemySpeed, -100*enemySpeed, 0, 0}
 local option = false
-
 
 
 
@@ -101,8 +129,12 @@ local option = false
 -- Restart
 local function restart(event)
     if event.phase == "began" then
-        print( "restart" )
-        Runtime:removeEventListener( restart )
+        -- Remove restart button
+        Runtime:removeEventListener( "touch", restart )
+        restartBtn:removeSelf()
+        restartBtn = nil
+
+        -- Reset Game
         physics.start()
         timer.resumeAll()
         player:setSequence("idle")
@@ -111,45 +143,100 @@ local function restart(event)
         shield.x, shield.y = cx, cy - offset
         spawnD1, spawnD2 = 13, 15
         fasterM = 1
-
+        shield.alpha = 1
+        playing = true
         score = 0
 
         scoreText.text = "Score: 0"
         scoreTextDeath.text = ""
-        restartBtn.text = ""
-
-        shield.alpha = 1
-
-        playing = true
     end
 end
 
 -- Game Over
 local function gameOver()
+    -- Remove all enemies
+    for i = #enemiesList, 1, -1 do
+        local thisEnemy = enemiesList[i]
+        table.remove( enemiesList, i )
+        display.remove( thisEnemy )
+    end
+
+    -- Anounce death
     player:setSequence("dead")
     print( "Game Over" )
     playing = false
+    shield.alpha = 0
+
+    -- Anounce score and offer restart
+    restartBtn = display.newText( "", cx, cy-40, native.systemFont, 50 )
     restartBtn.x, restartBtn.y = cx, cy+80
     scoreTextDeath.x, scoreTextDeath.y = cx, cy-80
 
     scoreTextDeath.text = "Your Score is " .. score .. "!"
-    restartBtn.text = "Restart?"
+    restartBtn.text = "Press anywhere to Restart"
     scoreText.text = ""
-
-    shield.alpha = 0
 
     physics.pause()
     timer.pauseAll()
     Runtime:addEventListener( "touch", restart )
 end
 
+-- Flipperoonie Cool Shit
+local function specificFlipFunction(self)
+    if self.x > 250 and self.x < 750 and self.y > 250 and self.y < 750 then
+        self.enterFrame = nil
+        Runtime:removeEventListener( specificFlipFunction )
+        self:setLinearVelocity( 0,0 )
+
+        print( "Facing: ")
+        print( self.dir )
+
+        if self.dir == "up" then
+            -- Move left
+            transition.to( self, { time = 180, transition=easing.outSine, x=cx+200 } )
+            transition.to( self, { time = 180, transition=easing.inSine, y=cy } )
+            -- Move down
+            transition.to( self, { time = 180, delay = 180,  transition=easing.inSine, x=cx } )
+            transition.to( self, { time = 180, delay = 180,  transition=easing.outSine, y=cy+200 } )
+        elseif self.dir == "down" then
+            -- Move right
+            transition.to( self, { time = 180, transition=easing.outSine, x=cx-200 } )
+            transition.to( self, { time = 180, transition=easing.inSine, y=cy } )
+            -- Move up
+            transition.to( self, { time = 180, delay = 180,  transition=easing.inSine, x=cx } )
+            transition.to( self, { time = 180, delay = 180,  transition=easing.outSine, y=cy-200 } )
+        elseif self.dir == "left" then
+            -- Move down
+            transition.to( self, { time = 180, transition=easing.inSine, x=cx } )
+            transition.to( self, { time = 180, transition=easing.outSine, y=cy+200 } )
+            -- Move right
+            transition.to( self, { time = 180, delay = 180,  transition=easing.outSine, x=cx+200 } )
+            transition.to( self, { time = 180, delay = 180,  transition=easing.inSine, y=cy } )
+        elseif self.dir == "right" then
+            -- Move up
+            transition.to( self, { time = 180, transition=easing.inSine, x=cx } )
+            transition.to( self, { time = 180, transition=easing.outSine, y=cy-200 } )
+            -- Move left
+            transition.to( self, { time = 180, delay = 180,  transition=easing.outSine, x=cx-200 } )
+            transition.to( self, { time = 180, delay = 180,  transition=easing.inSine, y=cy } )
+        end
+        -- Get to center
+        transition.to( self, { time=180, delay=360, transition=easing.linear, x=cx, y=cy } )
+    end
+end
+
 -- Collision Handler
 local function onLocalCollision(self, event)
-    if event.other.isShield then
+    if event.other.isShield and self.type == "UnoReverse" then
+        gameOver()
+    elseif event.other.isShield then
+        -- Remove Most recent Enemy from list
+        table.remove( enemiesList, 1 )
+
         -- Add Score
         -- Special Enemy is 3 points
-        if event.isSpecial then
-            score = score + 2
+        if self.type == "Flipperoonie" then
+            score = score + 1
         end
         score = score + 1
         scoreText.text = "Score: " .. score
@@ -163,9 +250,8 @@ local function onLocalCollision(self, event)
         if score > 50 then
             fasterM = 1.5
         elseif score > 35 then
-            spawnD1, spawnD2 = 2,3
-        elseif score > 25 then
             spawnD1, spawnD2 = 5,7
+        elseif score > 25 then
             fasterM = 1.2
         elseif score > 17 then
             spawnD1, spawnD2 = 7,9
@@ -173,7 +259,13 @@ local function onLocalCollision(self, event)
             spawnD1, spawnD2 = 10,12
         end
     end
-    if event.other.isPlayer then
+    if event.other.isPlayer and self.type == "UnoReverse" then
+        score = score + 2
+        scoreText.text = "Score: " .. score
+        table.remove( enemiesList, 1 )
+        display.remove( self )
+        event.isEnemy = false
+    elseif event.other.isPlayer then
         -- Remove Enemy & Game end
         gameOver()
         display.remove( self )
@@ -191,27 +283,39 @@ function spawnEnemies()
         enemy = display.newRect( 0, 0, 20, 20 )
         enemy.fill = { 1, 0, 0 }
         enemy.isEnemy = true
+        -- Add enemy to list
+        table.insert( enemiesList, enemy )
         print( "spawn success" )
 
         -- Make enemy move
-        -- Choose random direction / spawn
+        -- Choose random direction / spawn location
+        local orientation = {"up", "down", "left", "right"}
         local r = math.random(1, 4)
         local direction = orientation[r]
         enemy.x, enemy.y = Xpos[r], Ypos[r]
 
-        -- 1 in 8 chance to spawn special enemy
+        -- Chance for special enemies
         -- Move till death
         physics.addBody(enemy, "dynamic")
         local randomSpeed = ((math.random(25, 40))/20) * fasterM
-        if (math.random(1, 8) == 1) and (score > 20) then
-            enemy.type = "Reverse"
+        if (math.random(1, 8) == 1) and (score > 4) then
+            enemy.type = "Slow"
             enemy:scale( 1.5, 1.5 )
             enemy:setLinearVelocity( xSpeed[r], ySpeed[r] )
-        elseif (math.random(1, 4) == 1) and (score > 50) then
+        elseif (math.random(1, 4) == 1) and (score > 9) then
             enemy.type = "Flipperoonie"
+            enemy.dir = direction
             enemy:scale( 1.5, 1.5 )
-            enemy.fill = { 0, 0, 1 }
+            enemy.fill = { 1, 0, 1 }
             enemy:setLinearVelocity( xSpeed[r] * randomSpeed, ySpeed[r] * randomSpeed )
+            -- Call function when x and y are in range
+            enemy.enterFrame = specificFlipFunction
+            Runtime:addEventListener("enterFrame", enemy)
+        elseif (math.random(1, 4) == 1) and (score > 29) then
+            enemy.type = "UnoReverse"
+            enemy:scale( 1.5, 1.5 )
+            enemy:setLinearVelocity( xSpeed[r], ySpeed[r] )
+            enemy.fill = { 0, 1, 1 }
         else
             enemy.type = "Normal"
             enemy:setLinearVelocity( xSpeed[r] * randomSpeed, ySpeed[r] * randomSpeed )
@@ -244,7 +348,7 @@ timer.performWithDelay(120,randomiseSpawnTimings,0)
 
 
 ---------------------------------------------
---    Key Presses
+--    Inputs
 ---------------------------------------------
 
 -- Check Key presses
@@ -258,41 +362,67 @@ local function onKeyEvent(event)
         pressedKeys[event.keyName] = false
     end
 end
-local function checkPress(event)
+-- functions
+local function doIt(var)
     if playing then
-        if pressedKeys["w"] or pressedKeys["up"] then
+        print(var)
+        print("called")
+        if var == "up" then
             shield.x = cx
             shield.y = cy - offset
             shield.rotation = 0
             player:setSequence("up")
             player:play()
-        end
-        if pressedKeys["a"] or pressedKeys["left"] then
-            shield.x = cx - offset
-            shield.y = cy
-            shield.rotation = -90
-            player:setSequence("left")
-            player:play()
-        end
-        if pressedKeys["s"] or pressedKeys["down"] then
+        elseif var == "down" then
             shield.x = cx
             shield.y = cy + offset
             shield.rotation = 180
             player:setSequence("down")
             player:play()
-        end
-        if pressedKeys["d"] or pressedKeys["right"] then
+        elseif var == "left" then
+            shield.x = cx - offset
+            shield.y = cy
+            shield.rotation = -90
+            player:setSequence("left")
+            player:play()
+        elseif var == "right" then
             shield.x = cx + offset
             shield.y = cy
             shield.rotation = 90
             player:setSequence("right")
             player:play()
         end
-        if not pressedKeys["w"] or not pressedKeys["a"] or not pressedKeys["s"] or not pressedKeys["d"] then
-            player:setSequence("idle")
-            player:play()
-        end
     end
 end
+local function checkPress(event)
+    if playing then
+        -- Early restart
+        if pressedKeys["r"] then
+            gameOver()
+        end
+    end
+    -- Check if keys are pressed
+    if pressedKeys["w"] or pressedKeys["up"] then
+        doIt("up")
+    end
+    if pressedKeys["a"] or pressedKeys["left"] then
+        doIt("left")
+    end
+    if pressedKeys["s"] or pressedKeys["down"] then
+        doIt("down")
+    end
+    if pressedKeys["d"] or pressedKeys["right"] then
+        doIt("right")
+    end
+end
+-- Add touch listeners
+local function startTouchListener()
+    rectUp:addEventListener   ("touch", function(event) if event.phase == "began" then doIt("up")    end end)
+    rectDown:addEventListener ("touch", function(event) if event.phase == "began" then doIt("down")  end end)
+    rectLeft:addEventListener ("touch", function(event) if event.phase == "began" then doIt("left")  end end)
+    rectRight:addEventListener("touch", function(event) if event.phase == "began" then doIt("right") end end)
+end
+startTouchListener()
+-- Add key press listeners
 Runtime:addEventListener( "key", onKeyEvent )
 Runtime:addEventListener( "key", checkPress )
