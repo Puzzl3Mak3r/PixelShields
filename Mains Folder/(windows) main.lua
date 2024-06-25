@@ -361,8 +361,7 @@ function spawnEnemies()
             -- Call function when x and y are in range
             enemy.enterFrame = specificFlipFunction
             Runtime:addEventListener("enterFrame", enemy)
-        elseif true then
-        -- elseif (math.random(1, 4) == 1) and (score > 29) then
+        elseif (math.random(1, 4) == 1) and (score > 29) then
             enemy.type = "UnoReverse"
             enemy:scale( 1.5, 1.5 )
             enemy:setLinearVelocity( xSpeed[r], ySpeed[r] )
