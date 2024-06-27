@@ -56,6 +56,7 @@ local upTextGuide = display.newText( "w / up arrow", cx, cy-250, native.systemFo
 local downTextGuide = display.newText( "s / down arrow", cx, cy+250, native.systemFont, 50 )
 local leftTextGuide = display.newText( "a / left arrow", cx-250, cy, native.systemFont, 50 )
 local rightTextGuide = display.newText( "d / right arrow", cx+250, cy, native.systemFont, 50 )
+
 -- Tween all alphas out in 500ms with a delay of 900ms
 local function tweenOutGuides()
     transition.to( upTextGuide, { time=500, delay=900, alpha=0, transition=easing.linear} )
@@ -64,6 +65,11 @@ local function tweenOutGuides()
     transition.to( rightTextGuide, { time=500, delay=900, alpha=0, transition=easing.linear} )
 end
 tweenOutGuides()
+
+-- Local Text Guides
+local textGuide1 = display.newText( "Block Red and Pink", cx, cy+140, native.systemFont, 30 )
+local textGuide2 = display.newText( "Let Blue hit you!", cx, cy+180, native.systemFont, 30 )
+textGuide1.alpha, textGuide2.alpha = 0, 0
 
 
 
@@ -178,6 +184,9 @@ local function restart(event)
         downTextGuide.alpha = 1
         leftTextGuide.alpha = 1
         rightTextGuide.alpha = 1
+
+        textGuide1.alpha = 0
+        textGuide2.alpha = 0
         tweenOutGuides()
     end
 end
@@ -197,6 +206,10 @@ local function gameOver()
         print( "Game Over" )
         playing = false
         shield.alpha = 0
+
+        -- Make text guides appear
+        textGuide1.alpha = 1
+        textGuide2.alpha = 1
 
         -- Anounce score and offer restart
         restartBtn = display.newText( "", cx, cy-40, native.systemFont, 50 )
